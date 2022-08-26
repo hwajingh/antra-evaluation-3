@@ -176,23 +176,21 @@ const Controller = ((model, view) => {
         // ------- GET THE COURSE --------
         const course = new model.Course(courseId, courseName, required, credit);
 
-        // ------- PUT THE COURSE IN THE STATE  --------
+        // ------- PUT THE COURSE IN THE STATE & STYLE BACKGROUND --------
         const isCourseIncluded =
           state.tempCourses.filter((course) => course.id === chosenId).length >
           0;
 
-        const courseBox = document.getElementById(chosenId);
+        const element = document.getElementById(chosenId);
+        state.setElementBackground(element, !isCourseIncluded, chosenId % 2);
+
         if (isCourseIncluded) {
           const newCourses = state.tempCourses.filter(
             (course) => course.id !== chosenId
           );
           state.setTempCourses([...newCourses]);
-          // SET BACKGROUND
-          state.setElementBackground(courseBox, true, chosenId % 2);
         } else {
           state.setTempCourses([course, ...state.tempCourses]);
-          // SET BACKGROUND
-          state.setElementBackground(courseBox, false, chosenId % 2);
         }
 
         state.setTotalCredit(credits + credit);
