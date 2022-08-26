@@ -154,33 +154,13 @@ const Controller = ((model, view) => {
     );
     availableContainer.addEventListener("click", (event) => {
       if (event.target.className === "course") {
-        const chosenId = parseInt(event.target.id);
-
-        // ------- GET THE COURSE --------
+        // ------- INITIALIZE HELPER AND DATA --------
         const courseMap = state.availableCourses.reduce((acc, curr) => {
           acc[curr.courseId] = curr;
           return acc;
         }, {});
-
+        const chosenId = parseInt(event.target.id);
         const { courseId, courseName, required, credit } = courseMap[chosenId];
-        const course = new model.Course(courseId, courseName, required, credit);
-
-        // ------- PUT THE COURSE IN THE STATE & STYLE BACKGROUND --------
-        const isCourseIncluded =
-          state.tempCourses.filter((course) => course.id === chosenId).length >
-          0;
-
-        const element = document.getElementById(chosenId);
-        state.setElementBackground(element, !isCourseIncluded, chosenId % 2);
-
-        if (isCourseIncluded) {
-          const newCourses = state.tempCourses.filter(
-            (course) => course.id !== chosenId
-          );
-          state.setTempCourses([...newCourses]);
-        } else {
-          state.setTempCourses([course, ...state.tempCourses]);
-        }
 
         // ------- CALCULATE THE COURSE CREDIT --------
         const credits = state.tempCourses.reduce((acc, curr) => {
@@ -188,11 +168,34 @@ const Controller = ((model, view) => {
           return acc;
         }, 0);
 
-        if (credits > 18) {
+        if (credits + credit > 18) {
           alert("You can only choose up to 18 credits in one semester");
-        } else {
-          state.setTotalCredit(credits);
+          return;
         }
+
+        // ------- GET THE COURSE --------
+        const course = new model.Course(courseId, courseName, required, credit);
+
+        // ------- PUT THE COURSE IN THE STATE  --------
+        const isCourseIncluded =
+          state.tempCourses.filter((course) => course.id === chosenId).length >
+          0;
+
+        const courseBox = document.getElementById(chosenId);
+        if (isCourseIncluded) {
+          const newCourses = state.tempCourses.filter(
+            (course) => course.id !== chosenId
+          );
+          state.setTempCourses([...newCourses]);
+          // SET BACKGROUND
+          state.setElementBackground(courseBox, true, chosenId % 2);
+        } else {
+          state.setTempCourses([course, ...state.tempCourses]);
+          // SET BACKGROUND
+          state.setElementBackground(courseBox, false, chosenId % 2);
+        }
+
+        state.setTotalCredit(credits + credit);
       }
     });
   };

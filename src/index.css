@@ -27,6 +27,9 @@
 .contentHolder {
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  height: 300px;
+  width: 200px;
 }
 
 .creditCounter {
@@ -50,8 +53,9 @@
   font-size: 12px;
 }
 
-.availableCourses_title {
-  position: sticky;
+.availableCourses_title,
+.selectedCourses_title {
+  /* position: sticky; */
   display: flex;
   font-size: 14px;
   justify-content: center;
@@ -71,7 +75,7 @@ li {
   flex-direction: column;
   justify-content: space-around;
   align-items: center;
-  font-size: 15px;
+  font-size: 12px;
   border: 0.5px solid black;
 }
 
@@ -83,4 +87,8 @@ ul {
 
 li:nth-child(even) {
   background: rgb(221, 239, 221);
+}
+
+.select {
+  margin-left: 4px;
 }
