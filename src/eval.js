@@ -55,7 +55,7 @@ const Model = ((api, view) => {
       this.id = id;
       this.courseName = name;
       this.courseRequired = required;
-      this.courseCredit = credit;
+      this.credit = credit;
     }
   }
 
@@ -91,6 +91,7 @@ const Model = ((api, view) => {
       // use createTmp func in view to create a list of available courses in
       // a single string and store temp as currently availablecontainer
       const tmp = view.createTmp(this.#availableCourses);
+
       // put list into innerhtml
       view.render(availableContainer, tmp);
     }
@@ -102,7 +103,6 @@ const Model = ((api, view) => {
         view.domstr.selectedCourses
       );
       const tmp = view.createTmp(this.#selectedCourses);
-
       view.render(selectedContainer, tmp);
     }
 
