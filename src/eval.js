@@ -54,7 +54,7 @@ const Model = ((api, view) => {
     constructor(id, name, required, credit) {
       this.id = id;
       this.courseName = name;
-      this.courseRequired = required;
+      this.required = required;
       this.credit = credit;
     }
   }
