@@ -20,6 +20,14 @@ const View = (() => {
     element.style.backgroundColor = isSelected ? "deepskyblue" : originalColor;
   };
 
+  // FIX: escape interpolated strings (same XSS issue as todolistOnlyJs).
+  const escapeHtml = (value) =>
+    String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
   // return tmp as a string of all elements in arr/ browser then renders it as li items
   const createTmp = (arr) => {
     let tmp = "";
@@ -28,8 +36,8 @@ const View = (() => {
       let typeOfCourse = course.required ? "Compulsory" : "Elective";
       tmp += `
         <li class="course" id="${course.courseId}">
-          <span>${course.courseName}</span>
-          <span>Course Type: ${typeOfCourse}</span>
+          <span>${escapeHtml(course.courseName)}</span>
+          <span>Course Type: ${escapeHtml(typeOfCourse)}</span>
           <span>Course Credit: ${course.credit}</span>
         </li>
       `;
@@ -132,6 +140,23 @@ const Model = ((api, view) => {
 const Controller = ((model, view) => {
   const state = new model.State();
 
+  // FIX: build the course map ONCE (a Map, keyed by courseId) instead of
+  // rebuilding it from scratch on every click in both handlers below.
+  // availableCourses is only loaded once in init(), so a lazy cache is safe.
+  let courseMapCache = null;
+  const getCourseMap = () => {
+    if (!courseMapCache) {
+      courseMapCache = new Map(
+        state.availableCourses.map((course) => [course.courseId, course])
+      );
+    }
+    return courseMapCache;
+  };
+
+  // FIX: O(1) selected-membership via a Set, instead of
+  // filter(...).length > 0 on every click.
+  const selectedIds = new Set();
+
   const setDefaultCredit = () => {
     state.setTotalCredit(0);
   };
@@ -141,17 +166,11 @@ const Controller = ((model, view) => {
     const selectButton = document.querySelector(view.domstr.select);
 
     selectButton.addEventListener("click", () => {
-      //changes datastructure of available Courses from array to object
-      // O(n) -> O(1)
-      const courseMap = state.availableCourses.reduce((acc, curr) => {
-        //key is courseID and curr is course
-        acc[curr.courseId] = curr;
-        return acc;
-      }, {});
+      const courseMap = getCourseMap();
 
       // add up selected temp course credits
       const credits = state.tempCourses.reduce((acc, curr) => {
-        acc += courseMap[curr.id].credit;
+        acc += courseMap.get(curr.id).credit;
         return acc;
       }, 0);
 
@@ -175,21 +194,21 @@ const Controller = ((model, view) => {
       view.domstr.availableCourses
     );
     availableContainer.addEventListener("click", (event) => {
-      // check if selected item is a course of class course
-      if (event.target.className === "course") {
+      // FIX: closest() so clicking an inner <span> (name/type/credit)
+      // works. Previously event.target was the span, whose className is "",
+      // so the click was silently ignored.
+      const courseEl = event.target.closest(".course");
+      if (courseEl) {
         // ------- INITIALIZE HELPER AND DATA --------
-        const courseMap = state.availableCourses.reduce((acc, curr) => {
-          acc[curr.courseId] = curr;
-          return acc;
-        }, {});
-        const chosenId = parseInt(event.target.id);
+        const courseMap = getCourseMap();
+        const chosenId = parseInt(courseEl.id);
 
         //destructure chosen course with the given chosen id
-        const { courseId, courseName, required, credit } = courseMap[chosenId];
+        const { courseId, courseName, required, credit } = courseMap.get(chosenId);
 
         // ------- CALCULATE THE COURSE CREDIT --------
         const credits = state.tempCourses.reduce((acc, curr) => {
-          acc += courseMap[curr.id].credit;
+          acc += courseMap.get(curr.id).credit;
           return acc;
         }, 0);
 
@@ -202,10 +221,7 @@ const Controller = ((model, view) => {
         const course = new model.Course(courseId, courseName, required, credit);
 
         // ------- PUT THE COURSE IN THE STATE & STYLE BACKGROUND --------
-        // filter returns a array of the duplicated selected course
-        const isCourseIncluded =
-          state.tempCourses.filter((course) => course.id === chosenId).length >
-          0;
+        const isCourseIncluded = selectedIds.has(chosenId);
 
         // uses unique id assigned to said element to set background of element
         // id uses the same as course id
@@ -214,18 +230,21 @@ const Controller = ((model, view) => {
         state.setElementBackground(element, !isCourseIncluded, chosenId % 2);
 
         if (isCourseIncluded) {
-          // if course is included in tmp courses then check if it is the same as selected course
-          // if not filter out
+          selectedIds.delete(chosenId);
           const newCourses = state.tempCourses.filter(
             (course) => course.id !== chosenId
           );
           state.tempCourses = [...newCourses];
         } else {
+          selectedIds.add(chosenId);
           // put new course to first element if it is not present
           state.tempCourses = [course, ...state.tempCourses];
         }
 
-        state.setTotalCredit(credits + credit);
+        // FIX: previously this always added `credit`, even when deselecting.
+        state.setTotalCredit(
+          isCourseIncluded ? credits - credit : credits + credit
+        );
       }
     });
   };
